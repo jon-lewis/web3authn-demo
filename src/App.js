@@ -1,33 +1,49 @@
-import logo from './logo.svg';
-import { useEffect } from 'react';
+import { useState } from 'react';
 import './App.css';
-import { createKey } from "@near-js/biometric-ed25519";
+import { createKey, getKeys } from "@near-js/biometric-ed25519";
+import { createAccount, getCorrectAccessKey } from "./utils";
 
 function App() {
-  console.log('createKey', createKey);
+  const [createdKey, setCreatedKey] = useState(null);
+  const [retrievedKeys, setretrievedKeys] = useState([]);
+  const [correctKey, setCorrectKey] = useState([]);
 
-  useEffect(() => {
-    console.log('calling')
-    const getKey = async () => {
-      await createKey('helloworld');
-    }
-    getKey();
-  }, []);
+  const onCreateKey = async (name) => {
+    // TODO: should include logic for checking if the user name is already taken
+    const key = await createKey(name);
+    const publicKey = key.getPublicKey().toString();
+    setCreatedKey(publicKey);
+
+    await createAccount(name, key).then(() => {
+      console.log(`Account ${name} Created`);
+    });
+  };
+
+  const onGetKey = async (name) => {
+    const keys = await getKeys(name);
+    const publicKeys = keys.map((key) => key.getPublicKey().toString());
+    setretrievedKeys(publicKeys);
+    const correctPublicKey =  await getCorrectAccessKey(name, keys[0], keys[1]);
+    setCorrectKey(correctPublicKey?.getPublicKey().toString());
+  };
+
+
+  const [name, setName] = useState('dannytest31.testnet');
+
   return (
     <div className="App">
       <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
+      <p>
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
+        <button onClick={() => onCreateKey(name)}>Register</button>
+        <button onClick={() => onGetKey(name)}>Login</button>
+      </p>
+      <p>
+      {`Created Key: ${createdKey}`} <br /><br />
+      {`Retrieved Keys: ${retrievedKeys.join(' ')}`} <br /><br />
+      {`Correct Key: ${correctKey}`} <br /><br />
+      { correctKey === createdKey ? 'Key matched' : 'Key Unmatched' }
+      </p>
       </header>
     </div>
   );
